@@ -1,0 +1,103 @@
+<%# Layout principal con navbar.
+    Se muestra despues de autenticarse.
+    Compatible incluso cuando NO existe current_user. %>
+
+<nav class="bg-white border-b border-gray-200">
+  <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+
+    <%# Nombre del sistema %>
+    <span class="font-semibold text-gray-800 text-sm">
+      Sistema Inmobiliario
+    </span>
+
+    <%# Links segun rol %>
+    <div class="flex items-center gap-4 text-sm">
+
+      <%= if assigns[:current_user] do %>
+
+        <%# PANEL CLIENTE %>
+        <%= if @current_user["rol"] == "cliente" do %>
+
+          <a href="/cliente"
+             class="text-gray-600 hover:text-blue-700 transition">
+            Propiedades
+          </a>
+
+          <a href="/cliente/buscar"
+             class="text-gray-600 hover:text-blue-700 transition">
+            Buscar
+          </a>
+
+          <a href="/cliente/mensajes"
+             class="text-gray-600 hover:text-blue-700 transition">
+            Mis mensajes
+          </a>
+
+        <% end %>
+
+        <%# PANEL PROPIETARIO %>
+        <%= if @current_user["rol"] in ["vendedor", "arrendador"] do %>
+
+          <a href="/propietario"
+             class="text-gray-600 hover:text-blue-700 transition">
+            Mis propiedades
+          </a>
+
+          <a href="/propietario/publicar"
+             class="text-gray-600 hover:text-blue-700 transition">
+            Publicar
+          </a>
+
+          <a href="/propietario/mensajes"
+             class="text-gray-600 hover:text-blue-700 transition">
+            Mensajes
+          </a>
+
+        <% end %>
+
+        <%# Ranking visible para todos %>
+        <a href="/ranking"
+           class="text-gray-600 hover:text-blue-700 transition">
+          Ranking
+        </a>
+
+        <%# Datos usuario %>
+        <span class="text-gray-400 text-xs">
+          <%= @current_user["username"] %>
+          (<%= @current_user["rol"] %>)
+        </span>
+
+        <%# Logout %>
+        <a href="/logout"
+           class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded transition">
+          Salir
+        </a>
+
+      <% else %>
+
+        <%# Usuario NO autenticado %>
+
+        <a href="/login"
+           class="text-gray-600 hover:text-blue-700 transition">
+          Iniciar sesion
+        </a>
+
+        <a href="/register"
+           class="text-gray-600 hover:text-blue-700 transition">
+          Registrarse
+        </a>
+
+      <% end %>
+
+    </div>
+  </div>
+</nav>
+
+<%# Contenido principal %>
+<main class="max-w-5xl mx-auto px-4 py-6">
+
+  <.flash_group flash={@flash} />
+
+  <%= @inner_content %>
+
+</main>

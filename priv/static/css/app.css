@@ -1,0 +1,13 @@
+/* App styles - complementary to Tailwind CDN */
+* { box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: #f9fafb;
+}
+
+/* Phoenix LiveView loading indicator */
+.phx-loading { cursor: wait; }
+.phx-click-loading { opacity: 0.5; }
+
+[data-phx-main] { min-height: 100vh; }
