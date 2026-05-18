@@ -26,19 +26,19 @@ defmodule Inmobiliaria.CommandHandler do
 
   defp do_handle({:connect, username, password}, session) do
     if session.username != nil do
-      {"❌ Error: ya estás conectado como #{session.username}. Usa 'disconnect' primero.", session}
+      {" Error: ya estás conectado como #{session.username}. Usa 'disconnect' primero.", session}
     else
       case SessionManager.connect(username, password, self()) do
         {:ok, user} ->
           new_session = %{username: user.username, rol: user.rol}
-          msg = "✅ Bienvenido, #{user.username}! Conectado como #{user.rol}. Puntaje actual: #{user.puntaje}"
+          msg = " Bienvenido, #{user.username}! Conectado como #{user.rol}. Puntaje actual: #{user.puntaje}"
           {msg, new_session}
 
         {:error, :not_found} ->
-          {"❌ Error: usuario '#{username}' no encontrado. Usa 'register' para crear una cuenta.", session}
+          {" Error: usuario '#{username}' no encontrado. Usa 'register' para crear una cuenta.", session}
 
         {:error, :invalid_credentials} ->
-          {"❌ Error: contraseña incorrecta.", session}
+          {" Error: contraseña incorrecta.", session}
       end
     end
   end
@@ -49,14 +49,14 @@ defmodule Inmobiliaria.CommandHandler do
     roles_validos = ["cliente", "vendedor", "arrendador"]
 
     if rol not in roles_validos do
-      {"❌ Error: rol inválido. Usa: #{Enum.join(roles_validos, ", ")}", session}
+      {" Error: rol inválido. Usa: #{Enum.join(roles_validos, ", ")}", session}
     else
       case UserManager.register_user(username, rol, password) do
         :ok ->
-          {"✅ Usuario '#{username}' registrado como #{rol}. Ahora usa 'connect #{username} #{password}'.", session}
+          {" Usuario '#{username}' registrado como #{rol}. Ahora usa 'connect #{username} #{password}'.", session}
 
         {:error, :already_exists} ->
-          {"❌ Error: el usuario '#{username}' ya existe.", session}
+          {" Error: el usuario '#{username}' ya existe.", session}
       end
     end
   end
@@ -70,7 +70,7 @@ defmodule Inmobiliaria.CommandHandler do
 
       :ok ->
         SessionManager.disconnect(session.username)
-        {"👋 Hasta luego, #{session.username}!", %{username: nil, rol: nil}}
+        {" Hasta luego, #{session.username}!", %{username: nil, rol: nil}}
     end
   end
 
@@ -86,10 +86,10 @@ defmodule Inmobiliaria.CommandHandler do
       cond do
         not Location.valid_location?(ubicacion) ->
           locs = Enum.join(Location.list_locations(), ", ")
-          {"❌ Error: ubicación '#{ubicacion}' no válida. Ubicaciones disponibles: #{locs}", session}
+          {" Error: ubicación '#{ubicacion}' no válida. Ubicaciones disponibles: #{locs}", session}
 
         modalidad not in ["venta", "arriendo"] ->
-          {"❌ Error: modalidad debe ser 'venta' o 'arriendo'.", session}
+          {" Error: modalidad debe ser 'venta' o 'arriendo'.", session}
 
         true ->
           property = %PropertyManager{
@@ -107,13 +107,13 @@ defmodule Inmobiliaria.CommandHandler do
           case PropertyManager.save_property(property) do
             :ok ->
               PropertySupervisor.start_property(property)
-              {"✅ Propiedad publicada con ID: #{property.id}\n" <>
+              {" Propiedad publicada con ID: #{property.id}\n" <>
                 "   Tipo: #{property.tipo} | Modalidad: #{property.modalidad} | Ubicación: #{property.ubicacion}\n" <>
                 "   Precio: $#{property.precio} | Hab: #{property.habitaciones} | Área: #{property.area}m²",
                session}
 
             {:error, :already_exists} ->
-              {"❌ Error: ya existe una propiedad con ese ID.", session}
+              {" Error: ya existe una propiedad con ese ID.", session}
           end
       end
     else
@@ -146,17 +146,17 @@ defmodule Inmobiliaria.CommandHandler do
     with :ok <- require_role(session, ["cliente"]) do
       case Registry.lookup(Inmobiliaria.PropertyRegistry, property_id) do
         [] ->
-          {"❌ Error: propiedad '#{property_id}' no encontrada o no disponible.", session}
+          {" Error: propiedad '#{property_id}' no encontrada o no disponible.", session}
 
         [{pid, _}] ->
           case GenServer.call(pid, {:buy, session.username}) do
             {:ok, _property} ->
-              {"🎉 ¡Compra exitosa! Adquiriste la propiedad #{property_id}.\n" <>
+              {" ¡Compra exitosa! Adquiriste la propiedad #{property_id}.\n" <>
                 "   +10 puntos a tu cuenta. Gracias por usar el sistema.",
                session}
 
             {:error, :not_available} ->
-              {"❌ La propiedad #{property_id} ya no está disponible (fue comprada o arrendada).", session}
+              {" La propiedad #{property_id} ya no está disponible (fue comprada o arrendada).", session}
           end
       end
     else
@@ -170,17 +170,17 @@ defmodule Inmobiliaria.CommandHandler do
     with :ok <- require_role(session, ["cliente"]) do
       case Registry.lookup(Inmobiliaria.PropertyRegistry, property_id) do
         [] ->
-          {"❌ Error: propiedad '#{property_id}' no encontrada o no disponible.", session}
+          {" Error: propiedad '#{property_id}' no encontrada o no disponible.", session}
 
         [{pid, _}] ->
           case GenServer.call(pid, {:rent, session.username}) do
             {:ok, _property} ->
-              {"🎉 ¡Arriendo exitoso! Arrendaste la propiedad #{property_id}.\n" <>
+              {" ¡Arriendo exitoso! Arrendaste la propiedad #{property_id}.\n" <>
                 "   +10 puntos a tu cuenta.",
                session}
 
             {:error, :not_available} ->
-              {"❌ La propiedad #{property_id} ya no está disponible.", session}
+              {" La propiedad #{property_id} ya no está disponible.", session}
           end
       end
     else
@@ -194,11 +194,11 @@ defmodule Inmobiliaria.CommandHandler do
     with :ok <- require_auth(session) do
       case PropertyManager.find_property(property_id) do
         {:error, :not_found} ->
-          {"❌ Error: propiedad '#{property_id}' no encontrada.", session}
+          {" Error: propiedad '#{property_id}' no encontrada.", session}
 
         {:ok, property} ->
           MessageManager.send_message(property_id, session.username, property.propietario, message)
-          {"✉️  Mensaje enviado al propietario de #{property_id} (#{property.propietario}).", session}
+          {"  Mensaje enviado al propietario de #{property_id} (#{property.propietario}).", session}
       end
     else
       {:error, msg} -> {msg, session}
@@ -211,11 +211,11 @@ defmodule Inmobiliaria.CommandHandler do
     with :ok <- require_auth(session) do
       case PropertyManager.find_property(property_id) do
         {:error, :not_found} ->
-          {"❌ Error: propiedad '#{property_id}' no encontrada.", session}
+          {" Error: propiedad '#{property_id}' no encontrada.", session}
 
         {:ok, property} ->
           if property.propietario != session.username do
-            {"❌ Error: solo el propietario puede ver los mensajes de esta propiedad.", session}
+            {" Error: solo el propietario puede ver los mensajes de esta propiedad.", session}
           else
             messages = MessageManager.get_messages_for_property(property_id)
 
@@ -225,7 +225,7 @@ defmodule Inmobiliaria.CommandHandler do
               rows = Enum.map(messages, fn {ts, sender, msg} ->
                 "  [#{ts}] #{sender}: #{msg}"
               end)
-              {"📬 Mensajes para #{property_id}:\n" <> Enum.join(rows, "\n"), session}
+              {" Mensajes para #{property_id}:\n" <> Enum.join(rows, "\n"), session}
             end
           end
       end
@@ -240,10 +240,10 @@ defmodule Inmobiliaria.CommandHandler do
     with :ok <- require_auth(session) do
       case UserManager.find_user(session.username) do
         {:ok, user} ->
-          {"⭐ Puntaje de #{user.username} (#{user.rol}): #{user.puntaje} puntos", session}
+          {" Puntaje de #{user.username} (#{user.rol}): #{user.puntaje} puntos", session}
 
         {:error, _} ->
-          {"❌ Error al obtener puntaje.", session}
+          {" Error al obtener puntaje.", session}
       end
     else
       {:error, msg} -> {msg, session}
@@ -256,7 +256,7 @@ defmodule Inmobiliaria.CommandHandler do
     ranking = UserManager.get_ranking()
 
     if ranking == [] do
-      {"📊 No hay usuarios registrados aún.", session}
+      {" No hay usuarios registrados aún.", session}
     else
       header = "╔══ RANKING GLOBAL ══════════════════════════════╗"
       rows =
@@ -264,9 +264,9 @@ defmodule Inmobiliaria.CommandHandler do
         |> Enum.with_index(1)
         |> Enum.map(fn {{username, rol, puntaje}, i} ->
           medal = case i do
-            1 -> "🥇"
-            2 -> "🥈"
-            3 -> "🥉"
+            1 -> "1."
+            2 -> "2."
+            3 -> "3."
             _ -> "  #{i}."
           end
           "  #{medal} #{username} (#{rol}) — #{puntaje} pts"
@@ -299,12 +299,12 @@ defmodule Inmobiliaria.CommandHandler do
     sessions = SessionManager.list_sessions()
 
     if map_size(sessions) == 0 do
-      {"👥 No hay usuarios conectados.", session}
+      {" No hay usuarios conectados.", session}
     else
       rows = Enum.map(sessions, fn {username, info} ->
         "  • #{username} (#{info.rol}) — conectado desde #{info.connected_at}"
       end)
-      {"👥 Usuarios conectados (#{map_size(sessions)}):\n" <> Enum.join(rows, "\n"), session}
+      {" Usuarios conectados (#{map_size(sessions)}):\n" <> Enum.join(rows, "\n"), session}
     end
   end
 
@@ -360,18 +360,18 @@ defmodule Inmobiliaria.CommandHandler do
   # ─── unknown ────────────────────────────────────────────────────────────────
 
   defp do_handle({:unknown, raw}, session) do
-    {"❓ Comando no reconocido: '#{raw}'. Escribe 'help' para ver los comandos disponibles.", session}
+    {" Comando no reconocido: '#{raw}'. Escribe 'help' para ver los comandos disponibles.", session}
   end
 
   defp do_handle(_, session) do
-    {"❓ Comando no reconocido. Escribe 'help' para ver los comandos disponibles.", session}
+    {" Comando no reconocido. Escribe 'help' para ver los comandos disponibles.", session}
   end
 
   # ─── Helpers privados ────────────────────────────────────────────────────────
 
   defp require_auth(session) do
     if session.username == nil do
-      {:error, "❌ Error: debes conectarte primero. Usa 'connect <usuario> <clave>'."}
+      {:error, " Error: debes conectarte primero. Usa 'connect <usuario> <clave>'."}
     else
       :ok
     end
@@ -380,10 +380,10 @@ defmodule Inmobiliaria.CommandHandler do
   defp require_role(session, roles) do
     cond do
       session.username == nil ->
-        {:error, "❌ Error: debes conectarte primero. Usa 'connect <usuario> <clave>'."}
+        {:error, " Error: debes conectarte primero. Usa 'connect <usuario> <clave>'."}
 
       session.rol not in roles ->
-        {:error, "❌ Error: esta acción requiere rol #{Enum.join(roles, " o ")}. Tu rol es '#{session.rol}'."}
+        {:error, " Error: esta acción requiere rol #{Enum.join(roles, " o ")}. Tu rol es '#{session.rol}'."}
 
       true ->
         :ok
@@ -397,19 +397,19 @@ defmodule Inmobiliaria.CommandHandler do
     if missing == [] do
       :ok
     else
-      {:error, "❌ Error: faltan campos requeridos: #{Enum.join(missing, ", ")}"}
+      {:error, " Error: faltan campos requeridos: #{Enum.join(missing, ", ")}"}
     end
   end
 
   defp format_property(p) do
     "  [#{p.id}] #{String.upcase(p.tipo)} en #{p.modalidad}\n" <>
-      "   📍 #{p.ubicacion} | 💰 $#{p.precio} | 🛏 #{p.habitaciones} hab | 📐 #{p.area}m²\n" <>
-      "   👤 Propietario: #{p.propietario}"
+      "    #{p.ubicacion} |  $#{p.precio} |  #{p.habitaciones} hab |  #{p.area}m²\n" <>
+      "    Propietario: #{p.propietario}"
   end
 
   defp format_simple_ranking(title, ranking) do
     if ranking == [] do
-      "📊 No hay datos para el ranking de #{title}."
+      " No hay datos para el ranking de #{title}."
     else
       header = "╔══ RANKING #{title} ══════════════════════╗"
       rows =
