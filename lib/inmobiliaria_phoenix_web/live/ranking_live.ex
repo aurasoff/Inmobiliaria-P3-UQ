@@ -67,7 +67,7 @@ defmodule InmobiliariaPhoenixWeb.RankingLive do
           class={[
             "px-4 py-2 text-sm border-b-2 transition",
             @tab_activa == tab &&
-              "border-blue-700 text-blue-700 font-medium",
+              "border-pink-700 text-pink-700 font-medium",
             @tab_activa != tab &&
               "border-transparent text-gray-500 hover:text-gray-700"
           ]}>
@@ -115,7 +115,7 @@ defmodule InmobiliariaPhoenixWeb.RankingLive do
       <%= if datos == [] do %>
         <p class="text-sm text-gray-500">Sin operaciones registradas aun.</p>
       <% else %>
-        <table class="w-full text-sm border border-gray-200 rounded max-w-lg">
+        <table class="w-full text-sm border border-pink-200 rounded max-w-lg">
           <thead class="bg-gray-50 text-gray-600 text-left">
             <tr>
               <th class="px-4 py-2 font-medium w-10">#</th>

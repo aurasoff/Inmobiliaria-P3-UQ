@@ -47,6 +47,23 @@ defmodule Inmobiliaria.MessageManager do
     end
   end
 
+  def get_conversation(user1, user2) do
+    case FileUtils.read_lines(@messages_file) do
+      {:ok, lines} ->
+        lines
+        |> Enum.reject(&(String.trim(&1) == ""))
+        |> Enum.map(&parsear_mensaje/1)
+        |> Enum.reject(&is_nil/1)
+        |> Enum.filter(fn m ->
+          (m.sender == user1 && m.recipient == user2) ||
+            (m.sender == user2 && m.recipient == user1)
+        end)
+
+      {:error, _} ->
+        []
+    end
+  end
+
   defp parsear_mensaje(line) do
     case String.split(line, ";", parts: 6) do
       [timestamp, property_id, sender, recipient, message, reply_to] ->

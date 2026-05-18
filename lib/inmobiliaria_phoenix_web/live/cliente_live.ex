@@ -184,6 +184,31 @@ defmodule InmobiliariaPhoenixWeb.ClienteLive do
     end
   end
 
+  @impl true
+  def handle_event("reservar", _params, socket) do
+    property = socket.assigns.propiedad_seleccionada
+    username = socket.assigns.current_user["username"]
+
+    case Registry.lookup(Inmobiliaria.PropertyRegistry, property.id) do
+      [] ->
+        {:noreply,
+         assign(socket,
+           resultado_operacion: {:error, "La propiedad no está activa."}
+         )}
+
+      [{pid, _}] ->
+        GenServer.call(pid, {:update_state, "reservada"})
+        PropertyManager.update_estado(property.id, "reservada")
+
+        {:noreply,
+         assign(socket,
+           resultado_operacion:
+             {:ok, "Propiedad reservada. El propietario se pondrá en contacto."},
+           propiedad_seleccionada: %{property | estado: "reservada"}
+         )}
+    end
+  end
+
   # ── Helpers ────────────────────────────────────────────────────────────────
 
   defp put_si_no_vacio(map, _key, nil), do: map
@@ -199,7 +224,8 @@ defmodule InmobiliariaPhoenixWeb.ClienteLive do
     |> Enum.join(".")
     |> String.reverse()
   end
-# cambaiarrr
+
+  # cambaiarrr
   # ── Render ─────────────────────────────────────────────────────────────────
 
   @impl true
@@ -218,22 +244,22 @@ defmodule InmobiliariaPhoenixWeb.ClienteLive do
     <div class="flex gap-2 mb-4 text-sm">
       <button phx-click="limpiar_filtros"
         class={["px-3 py-1.5 rounded border transition",
-          @filtro_modalidad == "" && "bg-blue-700 text-white border-blue-700",
+          @filtro_modalidad == "" && "bg-pink-600 text-white border-pink-700",
           @filtro_modalidad != "" && "border-gray-300 text-gray-600 hover:border-blue-400"]}>
         Todas
       </button>
 
       <button phx-click="buscar" phx-value-modalidad="venta"
         class={["px-3 py-1.5 rounded border transition",
-          @filtro_modalidad == "venta" && "bg-blue-700 text-white border-blue-700",
-          @filtro_modalidad != "venta" && "border-gray-300 text-gray-600 hover:border-blue-400"]}>
+          @filtro_modalidad == "venta" && "bg-pink-700 text-white border-pink-700",
+          @filtro_modalidad != "venta" && "border-gray-300 text-gray-600 hover:border-pink-400"]}>
         En venta
       </button>
 
       <button phx-click="buscar" phx-value-modalidad="arriendo"
         class={["px-3 py-1.5 rounded border transition",
-          @filtro_modalidad == "arriendo" && "bg-blue-700 text-white border-blue-700",
-          @filtro_modalidad != "arriendo" && "border-gray-300 text-gray-600 hover:border-blue-400"]}>
+          @filtro_modalidad == "arriendo" && "bg-pink-700 text-white border-pink-700",
+          @filtro_modalidad != "arriendo" && "border-gray-300 text-gray-600 hover:border-pink-400"]}>
         En arriendo
       </button>
 
@@ -355,7 +381,7 @@ defmodule InmobiliariaPhoenixWeb.ClienteLive do
 
       <div class="col-span-2 flex gap-2">
         <button type="submit"
-          class="bg-blue-700 hover:bg-blue-800 text-white text-sm px-4 py-1.5 rounded transition">
+          class="bg-pink-500 hover:bg-pink-600 text-white text-sm px-4 py-1.5 rounded transition">
           Buscar
         </button>
         <button type="button" phx-click="limpiar_filtros"
@@ -417,68 +443,100 @@ defmodule InmobiliariaPhoenixWeb.ClienteLive do
   @impl true
   def render(%{live_action: :comprar} = assigns) do
     ~H"""
-    <a href="/cliente" class="text-sm text-blue-600 hover:underline">Volver al listado</a>
+    <a href="/cliente" class="text-sm text-blue-600 hover:underline">← Volver al listado</a>
 
     <%= if @propiedad_seleccionada do %>
       <% p = @propiedad_seleccionada %>
-      <div class="bg-white border border-gray-200 rounded mt-4 p-6 max-w-md">
-        <h2 class="text-base font-semibold text-gray-800 mb-1 capitalize">
-          <%= p.tipo %> en <%= p.modalidad %>
-        </h2>
-        <p class="text-xs text-gray-400 mb-4">ID: <%= p.id %></p>
 
-        <table class="text-sm w-full mb-5">
-          <tbody class="divide-y divide-gray-100">
-            <tr>
-              <td class="py-1.5 text-gray-500 w-28">Ubicacion</td>
-              <td class="py-1.5"><%= p.ubicacion %></td>
-            </tr>
-            <tr>
-              <td class="py-1.5 text-gray-500">Precio</td>
-              <td class="py-1.5 font-semibold">$<%= formato_precio(p.precio) %></td>
-            </tr>
-            <tr>
-              <td class="py-1.5 text-gray-500">Habitaciones</td>
-              <td class="py-1.5"><%= p.habitaciones %></td>
-            </tr>
-            <tr>
-              <td class="py-1.5 text-gray-500">Area</td>
-              <td class="py-1.5"><%= p.area %> m2</td>
-            </tr>
-            <tr>
-              <td class="py-1.5 text-gray-500">Propietario</td>
-              <td class="py-1.5"><%= p.propietario %></td>
-            </tr>
-            <tr>
-              <td class="py-1.5 text-gray-500">Estado</td>
-              <td class="py-1.5 capitalize"><%= p.estado %></td>
-            </tr>
-          </tbody>
-        </table>
+      <div class="mt-4 max-w-md border border-gray-200 rounded-xl overflow-hidden shadow-sm">
 
-        <%= if @resultado_operacion do %>
-          <% {tipo, msg} = @resultado_operacion %>
-          <p class={["text-sm rounded px-3 py-2 mb-4",
-            tipo == :ok    && "bg-green-50 border border-green-200 text-green-700",
-            tipo == :error && "bg-red-50 border border-red-200 text-red-600"]}>
-            <%= msg %>
+        <%# Header con tipo, ubicacion y estado %>
+        <div class={[
+          "p-4 flex items-center justify-between",
+          p.estado == "disponible" && "bg-green-50 border-b border-green-100",
+          p.estado != "disponible" && "bg-gray-50 border-b border-gray-100"
+        ]}>
+          <div>
+            <h2 class="text-base font-bold text-gray-800 capitalize"><%= p.tipo %></h2>
+            <p class="text-sm text-gray-500"> <%= p.ubicacion %></p>
+          </div>
+          <span class={[
+            "text-xs font-semibold px-3 py-1 rounded-full capitalize",
+            p.estado == "disponible" && "bg-green-100 text-green-700",
+            p.estado == "reservada"  && "bg-yellow-100 text-yellow-700",
+            p.estado == "vendida"    && "bg-gray-200 text-gray-500",
+            p.estado == "arrendada"  && "bg-blue-100 text-blue-600"
+          ]}>
+            <%= p.estado %>
+          </span>
+        </div>
+
+        <%# Precio y detalles %>
+        <div class="bg-white p-4">
+          <p class="text-2xl font-bold text-indigo-700 mb-3">
+            $<%= formato_precio(p.precio) %>
           </p>
-        <% end %>
 
-        <%= if p.estado == "disponible" && @resultado_operacion == nil do %>
-          <%= if p.modalidad == "venta" do %>
-            <button phx-click="comprar"
-              class="bg-blue-700 hover:bg-blue-800 text-white text-sm px-5 py-2 rounded transition">
-              Confirmar compra
-            </button>
-          <% else %>
-            <button phx-click="arrendar"
-              class="bg-blue-700 hover:bg-blue-800 text-white text-sm px-5 py-2 rounded transition">
-              Confirmar arriendo
-            </button>
+          <div class="flex flex-wrap gap-3 text-xs text-gray-500 mb-4">
+            <span> <%= p.modalidad %></span>
+            <span> <%= p.propietario %></span>
+            <span> <%= p.id %></span>
+            <span> <%= p.habitaciones %> hab</span>
+            <span> <%= p.area %> m²</span>
+          </div>
+
+          <%# Resultado de operacion %>
+          <%= if @resultado_operacion do %>
+            <% {tipo, msg} = @resultado_operacion %>
+            <p class={[
+              "text-sm rounded px-3 py-2 mb-4",
+              tipo == :ok    && "bg-green-50 border border-green-200 text-green-700",
+              tipo == :error && "bg-red-50 border border-red-200 text-red-600"
+            ]}>
+              <%= msg %>
+            </p>
           <% end %>
-        <% end %>
+
+          <%# Botones de accion %>
+          <%= if p.estado == "disponible" && @resultado_operacion == nil do %>
+            <div class="flex gap-3">
+
+              <%# Comprar o Arrendar %>
+              <%= if p.modalidad == "venta" do %>
+                <button phx-click="comprar"
+                  class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium py-2 rounded-lg transition flex items-center justify-center gap-2">
+                   Comprar
+                </button>
+              <% else %>
+                <button phx-click="arrendar"
+                  class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium py-2 rounded-lg transition flex items-center justify-center gap-2">
+                   Arrendar
+                </button>
+              <% end %>
+
+              <%# Reservar %>
+              <button phx-click="reservar"
+                class="flex-1 bg-pink-500 hover:bg-pink-600 text-white text-sm font-medium py-2 rounded-lg transition flex items-center justify-center gap-2">
+                 Reservar
+              </button>
+
+              <%# Contactar — va al chat con el propietario %>
+              <a href={"/chat/#{p.propietario}"}
+                class="flex-1 bg-green-100 hover:bg-green-200 text-green-700 text-sm font-medium py-2 rounded-lg transition flex items-center justify-center gap-2 text-center">
+                 Contactar
+              </a>
+
+            </div>
+          <% else %>
+            <%# Si no está disponible, solo mostrar contactar %>
+            <a href={"/chat/#{p.propietario}"}
+              class="w-full block text-center bg-green-100 hover:bg-green-200 text-green-700 text-sm font-medium py-2 rounded-lg transition">
+               Contactar propietario
+            </a>
+          <% end %>
+        </div>
       </div>
+
     <% else %>
       <p class="text-sm text-gray-500 mt-4">Propiedad no encontrada.</p>
     <% end %>
@@ -487,96 +545,96 @@ defmodule InmobiliariaPhoenixWeb.ClienteLive do
 
   @impl true
   def render(%{live_action: :mensajes} = assigns) do
-  ~H"""
-  <h2 class="text-lg font-semibold text-gray-800 mb-4">Mis mensajes</h2>
+    ~H"""
+    <h2 class="text-lg font-semibold text-gray-800 mb-4">Mis mensajes</h2>
 
-  <%= if @error do %>
-    <p class="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2 mb-4">
-      <%= @error %>
-    </p>
-  <% end %>
+    <%= if @error do %>
+      <p class="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2 mb-4">
+        <%= @error %>
+      </p>
+    <% end %>
 
-  <%= if @flash["info"] do %>
-    <p class="text-sm text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2 mb-4">
-      <%= @flash["info"] %>
-    </p>
-  <% end %>
+    <%= if @flash["info"] do %>
+      <p class="text-sm text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2 mb-4">
+        <%= @flash["info"] %>
+      </p>
+    <% end %>
 
-  <%# Formulario nuevo mensaje — ahora con campo destinatario %>
-  <form phx-submit="enviar_mensaje"
-    class="bg-white border border-gray-200 rounded p-5 max-w-md space-y-4 text-sm mb-6">
-    <div>
-      <label class="block text-gray-600 mb-1">Destinatario (usuario)</label>
-      <input type="text" name="destinatario"
-        class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        placeholder="Ej: vendedor, maria, etc." />
-    </div>
-    <div>
-      <label class="block text-gray-600 mb-1">ID de propiedad (opcional)</label>
-      <input type="text" name="propiedad_id" value={@mensaje_propiedad_id}
-        class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        placeholder="Ej: prop12345 — si escribes esto, va al propietario" />
-    </div>
-    <div>
-      <label class="block text-gray-600 mb-1">Mensaje</label>
-      <textarea name="mensaje" rows="2" required
-        class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        placeholder="Escribe tu mensaje..."><%= @mensaje_texto %></textarea>
-    </div>
-    <input type="hidden" name="reply_to" value="" />
-    <button type="submit"
-      class="bg-blue-700 hover:bg-blue-800 text-white text-sm px-4 py-2 rounded transition">
-      Enviar mensaje
-    </button>
-  </form>
+    <%# Formulario nuevo mensaje — ahora con campo destinatario %>
+    <form phx-submit="enviar_mensaje"
+      class="bg-white border border-gray-200 rounded p-5 max-w-md space-y-4 text-sm mb-6">
+      <div>
+        <label class="block text-gray-600 mb-1">Destinatario (usuario)</label>
+        <input type="text" name="destinatario"
+          class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Ej: vendedor, maria, etc." />
+      </div>
+      <div>
+        <label class="block text-gray-600 mb-1">ID de propiedad (opcional)</label>
+        <input type="text" name="propiedad_id" value={@mensaje_propiedad_id}
+          class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Ej: prop12345 — si escribes esto, va al propietario" />
+      </div>
+      <div>
+        <label class="block text-gray-600 mb-1">Mensaje</label>
+        <textarea name="mensaje" rows="2" required
+          class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Escribe tu mensaje..."><%= @mensaje_texto %></textarea>
+      </div>
+      <input type="hidden" name="reply_to" value="" />
+      <button type="submit"
+        class="bg-blue-700 hover:bg-blue-800 text-white text-sm px-4 py-2 rounded transition">
+        Enviar mensaje
+      </button>
+    </form>
 
-  <%# Historial %>
-  <% yo = @current_user["username"] %>
-  <% mensajes = Inmobiliaria.MessageManager.get_messages_for_user(yo) %>
+    <%# Historial %>
+    <% yo = @current_user["username"] %>
+    <% mensajes = Inmobiliaria.MessageManager.get_messages_for_user(yo) %>
 
-  <%= if mensajes == [] do %>
-    <p class="text-sm text-gray-500">No tienes mensajes aún.</p>
-  <% else %>
-    <div class="space-y-3 max-w-lg">
-      <%= for m <- mensajes do %>
-        <div class={[
-          "border rounded p-3 text-sm",
-          m.sender == yo && "bg-blue-50 border-blue-200",
-          m.sender != yo && "bg-white border-gray-200"
-        ]}>
-          <div class="flex justify-between text-xs text-gray-400 mb-1">
-            <span class="font-medium text-gray-700">
-              <%= if m.sender == yo do %>
-                Tú → <%= m.recipient %>
-              <% else %>
-                <%= m.sender %> → Ti
-              <% end %>
-            </span>
-            <span><%= String.slice(m.timestamp, 0, 16) |> String.replace("T", " ") %></span>
+    <%= if mensajes == [] do %>
+      <p class="text-sm text-gray-500">No tienes mensajes aún.</p>
+    <% else %>
+      <div class="space-y-3 max-w-lg">
+        <%= for m <- mensajes do %>
+          <div class={[
+            "border rounded p-3 text-sm",
+            m.sender == yo && "bg-blue-50 border-blue-200",
+            m.sender != yo && "bg-white border-gray-200"
+          ]}>
+            <div class="flex justify-between text-xs text-gray-400 mb-1">
+              <span class="font-medium text-gray-700">
+                <%= if m.sender == yo do %>
+                  Tú → <%= m.recipient %>
+                <% else %>
+                  <%= m.sender %> → Ti
+                <% end %>
+              </span>
+              <span><%= String.slice(m.timestamp, 0, 16) |> String.replace("T", " ") %></span>
+            </div>
+            <p class="text-gray-700 mb-1"><%= m.message %></p>
+            <%= if m.property_id != "" do %>
+              <p class="text-xs text-gray-400 mb-2">Propiedad: <%= m.property_id %></p>
+            <% end %>
+
+            <%# Responder — solo si yo soy el destinatario %>
+            <%= if m.recipient == yo do %>
+              <form phx-submit="enviar_mensaje" class="flex gap-2 mt-2">
+                <input type="hidden" name="destinatario" value={m.sender} />
+                <input type="hidden" name="propiedad_id" value={m.property_id} />
+                <input type="hidden" name="reply_to" value={m.timestamp} />
+                <input type="text" name="mensaje" required placeholder={"Responder a #{m.sender}..."}
+                  class="flex-1 border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                <button type="submit"
+                  class="bg-blue-700 hover:bg-blue-800 text-white text-xs px-3 py-1 rounded transition">
+                  Responder
+                </button>
+              </form>
+            <% end %>
           </div>
-          <p class="text-gray-700 mb-1"><%= m.message %></p>
-          <%= if m.property_id != "" do %>
-            <p class="text-xs text-gray-400 mb-2">Propiedad: <%= m.property_id %></p>
-          <% end %>
-
-          <%# Responder — solo si yo soy el destinatario %>
-          <%= if m.recipient == yo do %>
-            <form phx-submit="enviar_mensaje" class="flex gap-2 mt-2">
-              <input type="hidden" name="destinatario" value={m.sender} />
-              <input type="hidden" name="propiedad_id" value={m.property_id} />
-              <input type="hidden" name="reply_to" value={m.timestamp} />
-              <input type="text" name="mensaje" required placeholder={"Responder a #{m.sender}..."}
-                class="flex-1 border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
-              <button type="submit"
-                class="bg-blue-700 hover:bg-blue-800 text-white text-xs px-3 py-1 rounded transition">
-                Responder
-              </button>
-            </form>
-          <% end %>
-        </div>
-      <% end %>
-    </div>
-  <% end %>
-  """
+        <% end %>
+      </div>
+    <% end %>
+    """
   end
 end
