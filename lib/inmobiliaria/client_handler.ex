@@ -39,15 +39,14 @@ defmodule Inmobiliaria.ClientHandler do
   defp banner do
     """
 
-╔══════════════════════════════════════════════════════════════════╗
-║       SISTEMA DISTRIBUIDO DE GESTIÓN INMOBILIARIA              ║
-║                  Universidad del Quindío                       ║
-║                   Programación III — Elixir                    ║
-╠══════════════════════════════════════════════════════════════════╣
-║  Escribe 'help' para ver todos los comandos disponibles.       ║
-║  Escribe 'register <usuario> <clave> <rol>' para crear cuenta. ║
-║  Escribe 'connect <usuario> <clave>' para iniciar sesión.      ║
-╚══════════════════════════════════════════════════════════════════╝
+
+       SISTEMA DISTRIBUIDO DE GESTIÓN INMOBILIARIA
+                  Universidad del Quindío
+                   Programación III — Elixir
+  Escribe 'help' para ver todos los comandos disponibles.
+  Escribe 'register <usuario> <clave> <rol>' para crear cuenta.
+  Escribe 'connect <usuario> <clave>' para iniciar sesión.
+
 
 """
   end

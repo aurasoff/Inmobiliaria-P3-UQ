@@ -46,7 +46,7 @@ defmodule InmobiliariaPhoenixWeb.ChatLive do
 
   @impl true
   def handle_event("enviar", %{"mensaje" => msg}, socket) do
-    yo   = socket.assigns.current_user["username"]
+    yo = socket.assigns.current_user["username"]
     dest = socket.assigns.conversacion_activa
 
     if String.trim(msg) == "" do
@@ -69,14 +69,23 @@ defmodule InmobiliariaPhoenixWeb.ChatLive do
   @impl true
   def handle_event("nueva_conversacion", %{"destinatario" => dest}, socket) do
     yo = socket.assigns.current_user["username"]
+    dest = String.trim(dest)
 
-    if String.trim(dest) == "" || dest == yo do
-      {:noreply, assign(socket, error: "Usuario inválido.")}
-    else
-      {:noreply,
-       socket
-       |> assign(error: nil)
-       |> push_navigate(to: "/chat/#{dest}")}
+    cond do
+      dest == "" ->
+        {:noreply, assign(socket, error: "Escribe un nombre de usuario.")}
+
+      dest == yo ->
+        {:noreply, assign(socket, error: "No puedes enviarte mensajes a ti mismo.")}
+
+      not InmobiliariaPhoenix.UsuariosStore.existe?(dest) ->
+        {:noreply, assign(socket, error: "El usuario '#{dest}' no existe.")}
+
+      true ->
+        {:noreply,
+         socket
+         |> assign(error: nil)
+         |> push_navigate(to: "/chat/#{dest}")}
     end
   end
 

@@ -25,7 +25,7 @@ defmodule Inmobiliaria.CommandHandler do
   # ─── connect ────────────────────────────────────────────────────────────────
 
   defp do_handle({:connect, username, password}, session) do
-    if session.username != nil do
+    if session.username != nil do #si ya esta conectado en otra ventana
       {" Error: ya estás conectado como #{session.username}. Usa 'disconnect' primero.", session}
     else
       case SessionManager.connect(username, password, self()) do
@@ -131,7 +131,7 @@ defmodule Inmobiliaria.CommandHandler do
     properties = PropertyManager.list_available(filters)
 
     if properties == [] do
-      {"📭 No hay propiedades disponibles con esos criterios.", session}
+      {" No hay propiedades disponibles con esos criterios.", session}
     else
       header = "╔══ PROPIEDADES DISPONIBLES (#{length(properties)}) ══════════════════════════╗"
       rows = Enum.map(properties, &format_property/1)
@@ -220,7 +220,7 @@ defmodule Inmobiliaria.CommandHandler do
             messages = MessageManager.get_messages_for_property(property_id)
 
             if messages == [] do
-              {"📭 No hay mensajes para la propiedad #{property_id}.", session}
+              {" No hay mensajes para la propiedad #{property_id}.", session}
             else
               rows = Enum.map(messages, fn {ts, sender, msg} ->
                 "  [#{ts}] #{sender}: #{msg}"
